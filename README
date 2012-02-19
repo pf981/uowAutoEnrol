@@ -1,0 +1,9 @@
+This project will automatically enrol a student in a given tutorial at the correct time by sending
+POST data to sols.
+
+POST data was manually observed using Firefox with the Tamper Data extension.
+
+Note that is seems that when a session modifies information on Sols' database, it will invalidate
+all other sessions.
+
+Testing cannot really be done until enrolment opens...
