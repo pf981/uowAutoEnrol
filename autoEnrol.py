@@ -30,9 +30,9 @@ from padnums import pprint_table
 
 parser = OptionParser()
 parser.add_option("-u", "--username", dest="username",
-                  help="UOW SOLs username login", metavar="USERNAME")
+                  help="UOW SOLs username login (mandatory)", metavar="USERNAME")
 parser.add_option("-p", "--password", dest="password",
-                  help="UOW SOLs password login", metavar="PASSWORD")
+                  help="UOW SOLs password login (mandatory)", metavar="PASSWORD")
 (opts, args) = parser.parse_args()
 
 mandatories = ['username', 'password']
