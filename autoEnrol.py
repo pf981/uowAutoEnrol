@@ -1,4 +1,5 @@
-#!/bin/python
+#!/usr/bin/python
+# #!/bin/python # Use this for Solaris (Banshee)
 """
 This script will automatically enrol a student in a given tutorial at the correct time by sending
 POST data to sols.
@@ -16,6 +17,7 @@ __author__ = "Paul Foster"
 __date__ = "12-02-2012"
 
 import sys, urllib2, urllib, re
+from optparse import OptionParser
 import HTMLParser
 
 from padnums import pprint_table
@@ -23,8 +25,25 @@ from padnums import pprint_table
 # from lxml.html import fromstring, tostring # perhaps lxml.html could be installed and used for parsing forms to get the p_cs variables (and the others actually...)
 
 # fixme: should get these as arguments - certainly don't leave your credentials in here if you give it to anyone
-username = '' # fixme: get credentials from command line arguments
-password = ''
+# username = '' # fixme: get credentials from command line arguments
+# password = '' #
+
+parser = OptionParser()
+parser.add_option("-u", "--username", dest="username",
+                  help="UOW SOLs username login", metavar="USERNAME")
+parser.add_option("-p", "--password", dest="password",
+                  help="UOW SOLs password login", metavar="PASSWORD")
+(opts, args) = parser.parse_args()
+
+mandatories = ['username', 'password']
+for m in mandatories:
+    if not opts.__dict__[m]:
+        print "mandatory option is missing\n"
+        parser.print_help()
+        exit(-1)
+username = opts.username
+password = opts.password
+
 
 def setupUowProxy():
     "Setup uow proxy with credentials (Don't need to do this because it is a local UOW site)"
