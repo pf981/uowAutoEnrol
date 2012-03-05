@@ -213,7 +213,6 @@ def getEnrolmentOptions(postData):
         line = fd.readline()
         if not len(line):
             break
-        print line # fixme: remove
         matchedSubjectName = re.search('<TITLE>.* Enrolment for (.*)</TITLE>', line)
         if matchedSubjectName:
             print matchedSubjectName.group(1)
