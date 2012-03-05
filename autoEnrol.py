@@ -75,7 +75,7 @@ def startNewSession():
     # fixme: perhaps make a function (studentNum, sessionId) = findInReply(regex1, regex2...)
     # fixme: and figure out how to flag if there was none found. It will return when it finds them both
     while 1:
-        data = fd.read(1024) # fixme: it is possible that this will read in half of the student number - that would result in trouble
+        data = fd.readline()
         if not len(data):
             sys.stderr.write("Error: could not find session id in login reply data - probably invalid login credentials.")
             sys.exit(1)
@@ -149,7 +149,7 @@ def getCs2(sessionId, studentNum, cs1):
             return matchedCs2.group(1)
 
 # fixme: WIP
-def openEnrolment(sessionId, studentNum, cs1):
+def getListOfEnrolmentTables(sessionId, studentNum, cs1):
     """Login->Tutorial Enrolment (Main Menu) -> Continue (Button)
     Args:
         sessionId (str): The session ID to post
@@ -162,6 +162,9 @@ def openEnrolment(sessionId, studentNum, cs1):
 
     fd = postAndGetReply(url, postData)
 
+    # toReturn is a list of pretty print tables
+    toReturn = list()
+
     while 1:
         data = fd.readline()
         if not len(data):
@@ -171,8 +174,9 @@ def openEnrolment(sessionId, studentNum, cs1):
         matchedPostData = re.search('<a href="tutorial_enrolment.display_tutorial_timetable\?(p_sub_inst_id_pri=.*?)"', data)
         if matchedPostData:
             # Get the individual times, open/close dates for the enrolment.
-            getEnrolmentOptions(matchedPostData.group(1))
+            toReturn.append(getEnrolmentTable(matchedPostData.group(1)))
 
+    return toReturn
 
 def parseTable(fd):
     tableToReturn = list()
@@ -199,12 +203,13 @@ def parseTable(fd):
             break
 
     # fixme: remove output
-    out = sys.stdout
-    pprint_table(out, tableToReturn)
+    # out = sys.stdout
+    # pprint_table(out, tableToReturn)
     return tableToReturn
 
-def getEnrolmentOptions(postData):
-    print "\nGeting enrolment options"
+def getEnrolmentTable(postData):
+    print "\nGetting enrolment options:"
+    print "Post data: %s" % postData # fixme: remove
 
     fd = postAndGetReply("https://solss.uow.edu.au/sid/tutorial_enrolment.display_tutorial_timetable", postData)
 
@@ -215,10 +220,10 @@ def getEnrolmentOptions(postData):
             break
         matchedSubjectName = re.search('<TITLE>.* Enrolment for (.*)</TITLE>', line)
         if matchedSubjectName:
-            print matchedSubjectName.group(1)
+            print "Found enrolment for %s" % matchedSubjectName.group(1)
         matchedTable = re.search('<TABLE  ALIGN="center" width="85%" class="t_b">', line)
         if matchedTable:
-            parseTable(fd)
+            return parseTable(fd)
 
 # <table  ALIGN="center" width="85%" class="t_b">
 
@@ -246,6 +251,36 @@ def getEnrolmentOptions(postData):
 # </CENTER>
 
 
+
+
+# p_student_number=3648370                                Main menu
+# p_sub_inst_id_pri=202385                                the link to the enrolment timetable (The table with the subjects on the left and "Computer Lab" link on the right)
+# p_sub_inst_id_ori=202385                                ""
+# p_tut_id=98806                                          ??? *****Enrolment needs to be open to get this*****
+# p_session_id=FTTAYPSXGCBREJTVDIJZJUISLIYYJCCA           Main Menu
+# p_cs=25938445124246800228                               Main Menu
+def continuouslyAttemptToEnrol(p_student_number, p_sub_inst_id_pri, p_sub_inst_id_ori, p_tut_id, p_session_id, p_cs):
+    """continuously read the enrolment timetable until the link appears. 
+       Make sure to restart session if it expires.
+       Then all you need to do is change the link from "tutorial_enrolment.confirm_enrol" to "tutorial_enrolment.process_enrol"
+    """
+
+    # fixme you are up to here (WIP)
+
+    # infinite loop
+        # refresh the page
+        # for each line
+            # if it doesn't have some text indicating that the session is valid
+                 # restart session
+                 #     (p_session_id, p_student_number) = startNewSession()
+                 #     p_cs = getCs1(sessionId, studentNum)
+                 # break
+            # if the table has a link (ie enrolments have opened)
+                 # post the link but change "tutorial_enrolment.confirm_enrol" to "tutorial_enrolment.process_enrol" (ie send enrolment)
+                 # return
+            # if we've gone past the line that the link would have been on (ie enrolments are still closed)
+                 # break
+
 def __main__():
     # I have no idea what p_cs is but it is needed for posting things like changes to records -
     # seems to be some sort of session id. The p_cs you get from logging in is not the one we
@@ -269,11 +304,33 @@ def __main__():
     out = sys.stdout
     pprint_table(out, table)
 
-    print __date__
+    # enrolmentTables is a list of pretty print tables. The first element of the list is a table of the enrolments for the first lab; the second is a table of the enrolments for the second lab and so on.
+    # Each enrolment table consists of "Name", "First Day and Time toEnrol" and "Last Day and Time to Enrol".
+    enrolmentTables = getListOfEnrolmentTables(sessionId, studentNum, cs1)
+    print ""
+    for enrolmentTable in enrolmentTables:
+        pprint_table(out, enrolmentTable)
 
-    # deactivateImbEnrolmentRecord(sessionId, studentNum, cs2) # fixme: This one is for testing - it is useless
 
-    openEnrolment(sessionId, studentNum, cs1)
+#    processEnrolment(studentNum, sessionId, 
+
+# fixme: You CANNOT figure out the complete post message without enrolment being open.
+# fixme: You should continuously read the enrolment timetable until the link appears. (Make sure to restart session if it expires). Then all you need to do is change the link from "tutorial_enrolment.confirm_enrol" to "tutorial_enrolment.process_enrol"
+# e.g.
+# https://solss.uow.edu.au/sid/tutorial_enrolment.confirm_enrol?p_student_number=3648370&p_sub_inst_id_pri=202385&p_sub_inst_id_ori=202385&p_tut_id=98806&p_session_id=LYUGKYILVKVHPVDTRZFVSVKMZKDSNQYW&p_cs=13379565802805759483
+# becomes
+# https://solss.uow.edu.au/sid/tutorial_enrolment.process_enrol?p_student_number=3648370&p_sub_inst_id_pri=202385&p_sub_inst_id_ori=202385&p_tut_id=98806&p_session_id=LYUGKYILVKVHPVDTRZFVSVKMZKDSNQYW&p_cs=13379565802805759483
+
+
+# fixme: this is important
+# post data:
+# p_student_number=3648370                                Main menu
+# p_sub_inst_id_pri=202385                                the link to the enrolment timetable (The table with the subjects on the left and "Computer Lab" link on the right)
+# p_sub_inst_id_ori=202385                                ""
+# p_tut_id=98806                                          ??? *****Enrolment needs to be open to get this*****
+# p_session_id=FTTAYPSXGCBREJTVDIJZJUISLIYYJCCA           Main Menu
+# p_cs=25938445124246800228                               Main Menu
+
 
 # This is important: The final form submit:
 # <FORM ACTION="tutorial_enrolment.process_enrol" METHOD="POST">
