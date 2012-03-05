@@ -24,10 +24,6 @@ from padnums import pprint_table
 
 # from lxml.html import fromstring, tostring # perhaps lxml.html could be installed and used for parsing forms to get the p_cs variables (and the others actually...)
 
-# fixme: should get these as arguments - certainly don't leave your credentials in here if you give it to anyone
-# username = '' # fixme: get credentials from command line arguments
-# password = '' #
-
 parser = OptionParser()
 parser.add_option("-u", "--username", dest="username",
                   help="UOW SOLs username login (mandatory)", metavar="USERNAME")
@@ -166,86 +162,64 @@ def openEnrolment(sessionId, studentNum, cs1):
 
     fd = postAndGetReply(url, postData)
 
-    # fixme: remove
     while 1:
-#        data = fd.read(1024)
         data = fd.readline()
         if not len(data):
             break
-#        matchedCs2 = re.search('p_cs=([0-9]*)', data)
-#        if matchedCs2:
-#            return matchedCs2.group(1)
-#        print data
-#        if re.search('a href="tutorial_enrolment.display_tutorial_timetable?p_sub_inst_id_pri', data):
-        #if re.search('a', data):
 
-#															<a href="tutorial_enrolment.display_tutorial_timetable?p_sub_inst_id_pri=202385&p_sub_inst_id_ori=202385&p_type_id=10&p_student_number=3648370&p_session_id=IDYZLUDZLDDXEVZIAQVAVWPOETULDAVM&p_screen=tut_enrol&p_cs=2042883355631275045">Computer Lab</a>
-
-#        matchedPostData = re.search('<a href="tutorial_enrolment.display_tutorial_timetable?(p_sub_inst_id_pri.*?)"', data)
-
-
+        # Get the post data for the tutorial enrolment for that subject
         matchedPostData = re.search('<a href="tutorial_enrolment.display_tutorial_timetable\?(p_sub_inst_id_pri=.*?)"', data)
         if matchedPostData:
-            print matchedPostData.group(1)
+            # Get the individual times, open/close dates for the enrolment.
             getEnrolmentOptions(matchedPostData.group(1))
 
-#            print data
-            # fixme: post that and look at reply to see when tutorials are available
 
 def parseTable(fd):
+    tableToReturn = list()
+    curRowContents = list()
+
     while True:
         line = fd.readline()
-        if not len(line): # fixme: everything should be done using readline instead of data (so we don't accidently get half a line)
+        if not len(line):
             raise NameError('Unable to parse malformed table. End of file reached before closing TABLE tag.')
-#        print line
-        
-        # fixme: make a helper function find(regex, line, group) where group=0 => return whole line, group could be optional, possible could return bool so bool find(regex, line, group, matchedString) and the function modifies matchedString
-# fixme: todo
 
-        
-        # fixme: up to here
-        # if re.search('</TR>', line):
-            # add list to list of lists
-            # clear list
+        # fixme: make a helper function find(regex, line, group) where group=0 => return whole line, group could be optional, possible could return bool so bool find(regex, line, group, matchedString) and the function modifies matchedString
+
+        if re.search('</TR>', line):
+            tableToReturn.append(curRowContents) # add list to list of lists
+            curRowContents = list() # clear list
+            continue
 
         matchedCell = re.search('>(.*)<', line)
         if matchedCell:
-            print matchedCell.group(1)
-            # add to list
+            curRowContents.append(matchedCell.group(1)) # add to list
             continue
-        # add re.search('>(.*)<', line) (group1) to the table
-        
-        # if  re.search('</TR>', line) the go to the next row on the table
+
         if re.search('</TABLE>', line):
             break
 
+    # fixme: remove output
+    out = sys.stdout
+    pprint_table(out, tableToReturn)
+    return tableToReturn
+
 def getEnrolmentOptions(postData):
-#    fd = postAndGetReply("https://solss.uow.edu.au/sid/tutorial_enrolment.display_tutorial_timetable", postData)
+    print "\nGeting enrolment options"
+
     fd = postAndGetReply("https://solss.uow.edu.au/sid/tutorial_enrolment.display_tutorial_timetable", postData)
 
-#    req = urllib2.Request(url)
-#    req.add_header("Content-type", "application/x-www-form-urlencoded")
-#    fd = urllib2.urlopen("https://solss.uow.edu.au/sid/tutorial_enrolment.display_tutorial_timetable%s" % postData, "")
-#    fd = urllib2.urlopen("https://solss.uow.edu.au/sid/tutorial_enrolment.display_tutorial_timetable", postData)
-
-
-    print "Geting enrolment options"
-
-    # fixme: remove
+    # Look for the HTML table with all the enrolment options and put it into a pretty print table
     while 1:
         line = fd.readline()
-        if not len(line): # fixme: everything should be done using readline instead of data (so we don't accidently get half a line)
+        if not len(line):
             break
-#        print line
-        matchedSubjectName = re.search('<TITLE>Computer Lab Enrolment for (.*)</TITLE>', line)
+        print line # fixme: remove
+        matchedSubjectName = re.search('<TITLE>.* Enrolment for (.*)</TITLE>', line)
         if matchedSubjectName:
             print matchedSubjectName.group(1)
         matchedTable = re.search('<TABLE  ALIGN="center" width="85%" class="t_b">', line)
         if matchedTable:
-#            print matchedTable
             parseTable(fd)
-        # fixme: if the line contains <TABLE  ALIGN="center" width="85%" class="t_b">
-            # timesTable = parseTable(fd) # make sure fd get passed by reference or whatever python equivalent is
 
 # <table  ALIGN="center" width="85%" class="t_b">
 
@@ -286,13 +260,6 @@ def __main__():
     cs1 = getCs1(sessionId, studentNum)
     cs2 = getCs2(sessionId, studentNum, cs1)
 
-
-#     print "Username: %s" % username
-#     print "Student Number: %s" % studentNum
-#     print "Session ID: %s" % sessionId
-#     print "CS1: %s" % cs1
-#     print "CS2: %s" % cs2
-
     # Print session information in a neat table
     print "New session started."
     table = [["Username", username],
@@ -323,50 +290,4 @@ def __main__():
 __main__()
     
 # fixme: todo: Create a means of determining whether the session has been invalidated (ie session has been timed out)
-
-
-#decativate imb
-#POSTDATA=p_verification_profile_id=66035&p_stdnbr=3648370&p_session_id=EXMALDZIBOBOBUEIBDBSSDUAWLKQNPOB&p_db_session_id=&p_cs=1932395165718318422&p_submit=Deactivate
-
-#http://lxml.de/lxmlhtml.html#forms
-
-# .find_class(class_name):
-# Returns a list of all the elements with the given CSS class name. Note that class names are space separated in HTML, so doc.find_class_name('highlight') will find an element like <div class="sidebar highlight">. Class names are case sensitive.
-
-
-
-
-# parse(filename_url_or_file):
-# Parses the named file or url, or if the object has a .read() method, parses from that.
-# If you give a URL, or if the object has a .geturl() method (as file-like objects from urllib.urlopen() have), then that URL is used as the base URL. You can also provide an explicit base_url keyword argument.
-# document_fromstring(string):
-# Parses a document from the given string. This always creates a correct HTML document, which means the parent node is <html>, and there is a body and possibly a head.
-# fragment_fromstring(string, create_parent=False):
-# Returns an HTML fragment from a string. The fragment must contain just a single element, unless create_parent is given; e.g,. fragment_fromstring(string, create_parent='div') will wrap the element in a <div>.
-# fragments_fromstring(string):
-# Returns a list of the elements found in the fragment.
-# fromstring(string):
-# Returns document_fromstring or fragment_fromstring, based on whether the string looks like a full document, or just a fragment.
-
-
- # fixme: this is getting the wrong cs :-( need to get the one. (Actually it was getting the correct p_cs but, because it was already deactivated you can't deactivate again
-# <FORM ACTION="print_enrolment_record_std.maintain_profile" METHOD="POST">
-# <INPUT TYPE="hidden" NAME="p_verification_profile_id" VALUE="66035">
-# <INPUT TYPE="hidden" NAME="p_stdnbr" VALUE="3648370">
-# <INPUT TYPE="hidden" NAME="p_session_id" VALUE="YHTNZAZEMVEKELALBQQTAZZBRDNNMLRP">
-
-# <INPUT TYPE="hidden" NAME="p_db_session_id" VALUE="">
-# <INPUT TYPE="hidden" NAME="p_cs" VALUE="32537509911533330133">
-# <TD ALIGN="center" width="20%" class=d><font class="f">IMB</font></TD>
-# <TD ALIGN="center" width="20%" class=d><font class="f">cvdooxb</font></TD>
-# <TD ALIGN="center" width="15%" class=d><font class="f">12/02/2011 01:17:58</font></TD>
-# <TD ALIGN="center" width="15%" class=d><font class="f">Inactive</font></TD>
-# <TD ALIGN="center" DP="" ROWSPAN=""  COLSPAN="" width=30% nowrap class=d><FONT color=#000000></FONT><font class="f">
-# &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp 
-# &nbsp&nbsp 
-# <INPUT TYPE="submit" NAME="p_submit" VALUE="  Activate  "   class="btn" onmouseover="this.className='btnhov';" onmouseout="this.className='btn';" >
-# &nbsp&nbsp 
-# <INPUT TYPE="submit" NAME="p_submit" VALUE="Delete"   class="btn" onmouseover="this.className='btnhov';" onmouseout="this.className='btn';" >
-# </TD>
-
-# </FORM>
+# fixme: write unit tests
